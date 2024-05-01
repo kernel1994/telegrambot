@@ -59,10 +59,18 @@ async function onUpdate(update) {
 function onMessage(message) {
   console.log(`[onMessage]message.text=${message.text}`)
   const paramsArray = message.text.split(':');
-  if (paramsArray[0] === 'rate') {
-    return sendInterestRateCsv(message.chat.id, paramsArray[1]);
+
+  const command = paramsArray[0];
+  const paramsText = paramsArray[1];
+
+  if (command === 'rate') {
+    return sendInterestRate(message.chat.id, paramsText);
+  } else if (command === 'ratecsv') {
+    return sendInterestRateCsv(message.chat.id, paramsText);
   } else {
-    const helpText = 'command:\n- rate:m=monthly;a=amount;p=period';
+    let helpText = 'command:\n';
+    helpText += '- rate:m=monthly;a=amount;p=period\n'
+    helpText += '- ratecsv:m=monthly;a=amount;p=period\n'
     return sendPlainText(message.chat.id, helpText);
   }
 }
@@ -105,6 +113,27 @@ async function sendInterestRateCsv(chatId, paramsText) {
       method: 'POST',
       body: formData,
     })
+  ).json();
+}
+
+async function sendInterestRate(chatId, paramsText) {
+  const paramsArray = paramsText.split(';');
+  const params = {};
+  paramsArray.forEach((pair) => {
+    const [param, value] = pair.split('=');
+    params[param] = parseFloat(value); // Convert value to a number
+  });
+
+  const rate = new RealInterestRate(params['m'], params['a'], params['p']);
+  let text = `真实月利率=${rate.rate}\n真实年利率=${rate.realRateYearly}\n平均月利率=${rate.averageRateMonthly}\n平均年利率=${rate.averageRateYearly}`;
+  console.log(`[sendInterestRate]:text=${text}`);
+  return (
+    await fetch(
+      apiUrl('sendMessage', {
+        chat_id: chatId,
+        text,
+      }),
+    )
   ).json();
 }
 
